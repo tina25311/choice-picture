@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: choice-picture-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: choice_picture
+      MYSQL_USER: choice_user
+      MYSQL_PASSWORD: choice_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    networks:
+      - choice-picture-network
+
+  redis:
+    image: redis:6.2-alpine
+    container_name: choice-picture-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - choice-picture-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: choice-picture-backend
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/choice_picture?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: choice_user
+      SPRING_DATASOURCE_PASSWORD: choice_pass
+      SPRING_REDIS_HOST: redis
+      SPRING_REDIS_PORT: 6379
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - choice-picture-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: choice-picture-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    networks:
+      - choice-picture-network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  choice-picture-network:
+    driver: bridge 
